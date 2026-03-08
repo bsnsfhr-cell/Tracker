@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Smart Link Tracker</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<style>
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+margin:0;
+padding:20px;
+}
+
+.container{
+max-width:1000px;
+margin:auto;
+}
+
+.card{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+margin-bottom:20px;
+}
+
+h1{
+text-align:center;
+}
+
+button{
+padding:10px 20px;
+border:none;
+border-radius:6px;
+background:#38bdf8;
+color:black;
+cursor:pointer;
+}
+
+input{
+width:100%;
+padding:10px;
+border-radius:6px;
+border:none;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:20px;
+}
+
+td,th{
+padding:10px;
+border-bottom:1px solid #334155;
+text-align:left;
+font-size:14px;
+}
+
+.linkbox{
+background:#020617;
+padding:10px;
+border-radius:6px;
+word-break:break-all;
+margin-top:10px;
+}
+
+#map{
+height:400px;
+border-radius:10px;
+margin-top:20px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>🔗 Smart Link Tracker</h1>
+
+<div class="card">
+<h3>Buat Link Tracker</h3>
+
+<input id="targetLink" placeholder="Masukkan link tujuan">
+
+<br><br>
+
+<button onclick="createLink()">Buat Link</button>
+
+<p id="generatedLink" class="linkbox"></p>
+
+</div>
+
+
+<div class="card">
+
+<h3>📊 Data Pengunjung</h3>
+
+<table>
+
+<thead>
+
+<tr>
+<th>Waktu</th>
+<th>IP</th>
+<th>Negara</th>
+<th>Kota</th>
+<th>Device</th>
+<th>Browser</th>
+</tr>
+
+</thead>
+
+<tbody id="visitorTable"></tbody>
+
+</table>
+
+<h3>🗺 Lokasi Pengunjung</h3>
+
+<div id="map"></div>
+
+</div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+let params = new URLSearchParams(window.location.search)
+let target = params.get("to")
+
+if(target){
+
+trackVisitor()
+
+setTimeout(()=>{
+window.location.href = target
+},1500)
+
+}
+
+function createLink(){
+
+let url = document.getElementById("targetLink").value
+
+let tracker =
+window.location.origin +
+window.location.pathname +
+"?to=" + encodeURIComponent(url)
+
+document.getElementById("generatedLink").innerText = tracker
+
+}
+
+async function trackVisitor(){
+
+let res = await fetch("https://ipapi.co/json/")
+let data = await res.json()
+
+let device = navigator.userAgent
+
+let visitor = {
+
+time:new Date().toLocaleString(),
+ip:data.ip,
+country:data.country_name,
+city:data.city,
+lat:data.latitude,
+lon:data.longitude,
+device:device.includes("Mobile") ? "Mobile":"Desktop",
+browser:device
+
+}
+
+let logs = JSON.parse(localStorage.getItem("visitors")||"[]")
+
+logs.push(visitor)
+
+localStorage.setItem("visitors",JSON.stringify(logs))
+
+loadVisitors()
+
+showVisitorsOnMap()
+
+}
+
+function loadVisitors(){
+
+let logs = JSON.parse(localStorage.getItem("visitors")||"[]")
+
+let table = document.getElementById("visitorTable")
+
+table.innerHTML=""
+
+logs.reverse().forEach(v=>{
+
+table.innerHTML+=`
+
+<tr>
+
+<td>${v.time}</td>
+<td>${v.ip}</td>
+<td>${v.country}</td>
+<td>${v.city}</td>
+<td>${v.device}</td>
+<td>${v.browser}</td>
+
+</tr>
+
+`
+
+})
+
+}
+
+let map = L.map('map').setView([-2.5,118],5)
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:18
+}).addTo(map)
+
+function showVisitorsOnMap(){
+
+let logs = JSON.parse(localStorage.getItem("visitors")||"[]")
+
+logs.forEach(v=>{
+
+if(v.lat && v.lon){
+
+L.marker([v.lat,v.lon])
+.addTo(map)
+.bindPopup(
+"IP: "+v.ip+"<br>"+
+"Kota: "+v.city+"<br>"+
+"Negara: "+v.country
+)
+
+}
+
+})
+
+}
+
+loadVisitors()
+showVisitorsOnMap()
+
+</script>
+
+</body>
+</html>
